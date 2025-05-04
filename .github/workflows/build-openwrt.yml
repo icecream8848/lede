@@ -1,0 +1,36 @@
+name: Build OpenWrt
+
+on:
+  workflow_dispatch:  # 允许手动触发
+  push:
+    branches: [ master ]  # 代码更新时自动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib git gettext libncurses5-dev libssl-dev python3 python3-distutils rsync unzip zlib1g-dev wget
+
+      - name: Update feeds
+        run: |
+          cd lede
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure and compile
+        run: |
+          cd lede
+          make menuconfig  # 默认配置（需后续优化）
+          make -j$(nproc) V=s
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openwrt-firmware
+          path: lede/bin/targets/**/*
